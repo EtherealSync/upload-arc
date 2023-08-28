@@ -1,30 +1,16 @@
-import { StackContext, Api, EventBus } from "sst/constructs";
+import { Cron, Queue, StackContext } from "sst/constructs";
 
-export function API({ stack }: StackContext) {
-  const bus = new EventBus(stack, "bus", {
-    defaults: {
-      retries: 10,
-    },
-  });
+export function UploadMicroserice({ stack }: StackContext) {
 
-  const api = new Api(stack, "api", {
-    defaults: {
-      function: {
-        bind: [bus],
-      },
-    },
-    routes: {
-      "GET /": "packages/functions/src/lambda.handler",
-      "GET /todo": "packages/functions/src/todo.list",
-      "POST /todo": "packages/functions/src/todo.create",
-    },
-  });
+  const poll = new Cron(stack, "Cron", {
+    schedule: "rate(1 minute)",
+    job: "packages/functions/src/lambda.handler"
+  })
 
-  bus.subscribe("todo.created", {
-    handler: "packages/functions/src/events/todo-created.handler",
-  });
+  const queue = new Queue(stack, "queue", {});
 
-  stack.addOutputs({
-    ApiEndpoint: api.url,
-  });
+  poll.attachPermissions(['s3']);
+  poll.bind([queue]);
+
+  
 }
