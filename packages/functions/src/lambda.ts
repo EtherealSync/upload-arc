@@ -1,9 +1,13 @@
-import { SQS } from 'aws-sdk';
+import { Lambda, SQS } from 'aws-sdk';
+import { Function } from "sst/node/function";
 import { Queue } from 'sst/node/queue';
 
 const sqs = new SQS();
-export async function handler() {
+const lambda = new Lambda();
 
+const FunctionName = process.env.UPLOAD_JOB_HANDLER_NAME as string;
+
+export async function handler() {
   try {
     console.log('Polling SQS queue');
 
@@ -17,13 +21,17 @@ export async function handler() {
     if(messages.Messages && messages.Messages.length > 0){
       console.log(`Recieved ${messages.Messages.length} messages`);
 
-      // Write logic for checking tasks in fargate cluster 
-      // if tasks < 10 then invoke task and delete or do nothing 
-
       for(const message of messages.Messages){
         console.log(`Message consumed`);
         console.log(message)
         if(message.ReceiptHandle){
+          
+          lambda.invoke({
+            FunctionName,
+            InvocationType: 'Event', 
+            Payload: JSON.stringify(message.Body)
+          })
+
           await sqs.deleteMessage({
             QueueUrl: Queue.queue.queueUrl,
             ReceiptHandle: message.ReceiptHandle
