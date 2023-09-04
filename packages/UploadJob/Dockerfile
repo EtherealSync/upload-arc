@@ -7,5 +7,3 @@ RUN go mod download && go mod verify
 
 COPY . ./
 RUN go build -o /upload
-
-CMD [ "/upload", "parameter-1", "parameter-2" ]
