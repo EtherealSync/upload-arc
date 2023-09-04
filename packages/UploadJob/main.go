@@ -6,6 +6,14 @@ import (
 )
 
 func main() {
-	args := os.Args
-	fmt.Println(args[1], args[2])
+
+	fmt.Println("Job Invoked")
+
+	sstPayload := os.Getenv("SST_PAYLOAD")
+
+	if sstPayload != "" {
+		fmt.Println(sstPayload)
+	} else {
+		fmt.Println("doesn't exsist")
+	}
 }
