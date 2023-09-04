@@ -33,22 +33,6 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2
 
-  packages/core:
-    dependencies:
-      zod:
-        specifier: ^3.22.2
-        version: 3.22.2
-    devDependencies:
-      '@types/node':
-        specifier: ^20.5.6
-        version: 20.5.6
-      sst:
-        specifier: ^2.24.16
-        version: 2.24.16
-      vitest:
-        specifier: ^0.34.3
-        version: 0.34.3
-
   packages/functions:
     devDependencies:
       '@types/aws-lambda':
@@ -6120,3 +6104,4 @@ packages:
 
   /zod@3.22.2:
     resolution: {integrity: sha512-wvWkphh5WQsJbVk1tbx1l1Ly4yg+XecD+Mq280uBGt9wa5BKSWf4Mhp6GmrkPixhMxmabYY7RbzlwVP32pbGCg==}
+    dev: true
