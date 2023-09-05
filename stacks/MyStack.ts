@@ -10,9 +10,6 @@ export function UploadMicroserice({ stack }: StackContext) {
     handler: "packages/UploadJob",
     logRetention: "one_week",
     timeout: "2 hours",
-    container:  {
-      cmd: [ "/upload" ]
-    },
   })
 
   const poll = new Cron(stack, "Cron", {
@@ -22,7 +19,8 @@ export function UploadMicroserice({ stack }: StackContext) {
         handler: "packages/functions/src/lambda.handler",
         environment: {
           "UPLOAD_JOB_HANDLER_NAME": upload._jobManager.functionName
-        }
+        },
+        bind: [queue]
       } 
     } 
   })
