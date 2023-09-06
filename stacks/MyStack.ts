@@ -13,7 +13,7 @@ export function UploadMicroserice({ stack }: StackContext) {
     container:{
       cmd: ["/upload"]
     },
-    permissions: ['s3','dynamodb']
+    permissions: ['s3']
   })
 
   const poll = new Cron(stack, "Cron", {
@@ -22,7 +22,7 @@ export function UploadMicroserice({ stack }: StackContext) {
       function: {
         handler: "packages/functions/src/lambda.handler",
         bind: [queue, upload],
-        permissions: ['s3']
+        permissions: ['s3','dynamodb']
       } 
     } 
   })
