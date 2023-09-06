@@ -15,7 +15,7 @@ export function UploadMicroserice({ stack }: StackContext) {
     },
     permissions: ['s3']
   })
-
+  
   const poll = new Cron(stack, "Cron", {
     schedule: "rate(1 minute)",
     job: {
