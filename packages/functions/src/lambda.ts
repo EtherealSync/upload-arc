@@ -1,55 +1,72 @@
-import { Lambda, SQS } from 'aws-sdk';
-import { Function } from "sst/node/function";
+import { SQS } from 'aws-sdk';
+import { Job } from 'sst/node/job';
 import { Queue } from 'sst/node/queue';
 
 const sqs = new SQS();
-const lambda = new Lambda();
-
-const FunctionName = process.env.UPLOAD_JOB_HANDLER_NAME as string;
 
 export async function handler() {
   try {
-    console.log('Polling SQS queue');
+      console.log('Polling SQS queue');
 
-    const messages = await sqs.receiveMessage({
-      QueueUrl: Queue.queue.queueUrl,
-      MaxNumberOfMessages: 10,
-      WaitTimeSeconds: 20,
-    }).promise();
+      const messages = await sqs.receiveMessage({
+        QueueUrl: Queue.queue.queueUrl,
+        MaxNumberOfMessages: 10,
+        WaitTimeSeconds: 20,
+      }).promise();
 
-
-    if(messages.Messages && messages.Messages.length > 0){
+      if(!messages.Messages){
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ status: "No messages recieved" }),
+        }
+      }
+      
       console.log(`Recieved ${messages.Messages.length} messages`);
 
       for(const message of messages.Messages){
-        console.log(`Message consumed`);
-        console.log(message)
-        if(message.ReceiptHandle){
-          
-          lambda.invoke({
-            FunctionName,
-            InvocationType: 'Event', 
-            Payload: JSON.stringify(message.Body)
-          })
 
-          await sqs.deleteMessage({
-            QueueUrl: Queue.queue.queueUrl,
-            ReceiptHandle: message.ReceiptHandle
-          }).promise()
-        }
+          console.log(`Message consumed`);
+          console.log(message)
+
+          if(message.ReceiptHandle && message.Body){
+            
+            const info = JSON.parse(message.Body)
+
+            if(!info['PRIMARY_KEY_METADATA'] || !info['SORT_KEY_METADATA'] || !info['PRIMARY_KEY_TOKEN'] || !info['SORT_KEY_TOKEN'] || !info['S3_OBJECT_KEY'] || !info['S3_BUCKET_NAME']){
+                return {
+                  statusCode: 400,
+                  body: JSON.stringify({ status: "Bad request, check message body" }),
+                }
+            }
+
+            Job.upload.run({
+              payload: {
+                'PRIMARY_KEY_METADATA': info['PRIMARY_KEY_METADATA'],
+                'SORT_KEY_METADATA' : info['SORT_KEY_METADATA'],
+                'PRIMARY_KEY_TOKEN' : info['PRIMARY_KEY_TOKEN'],
+                'SORT_KEY_TOKEN' : info['SORT_KEY_TOKEN'],
+                'S3_OBJECT_KEY' : info['S3_OBJECT_KEY'],
+                'S3_BUCKET_NAME' : info['S3_BUCKET_NAME']
+              }
+            })
+
+            await sqs.deleteMessage({
+              QueueUrl: Queue.queue.queueUrl,
+              ReceiptHandle: message.ReceiptHandle
+            }).promise()
+          }
       }
       return {
         statusCode: 200,
         body: JSON.stringify({ status: "successful" }),
       }
-    }
-
-    console.log('No messages recieved');
+    
     
   } catch (error) {
     console.error(error)
     return {
-      body: JSON.stringify({ status: "error, check logs" }),
+      statusCode: 500,
+      body: JSON.stringify({ status: "Unhandled server error, check logs" }),
     }
   }
   
