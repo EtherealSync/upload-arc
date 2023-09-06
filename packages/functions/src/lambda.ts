@@ -1,8 +1,9 @@
-import { SQS } from 'aws-sdk';
+import { DynamoDB, SQS } from 'aws-sdk';
 import { Job } from 'sst/node/job';
 import { Queue } from 'sst/node/queue';
 
 const sqs = new SQS();
+const dynamodb = new DynamoDB.DocumentClient({region: 'ap-south-1'});
 
 export async function handler() {
   try {
@@ -32,21 +33,54 @@ export async function handler() {
             
             const info = JSON.parse(message.Body)
 
-            if(!info['PRIMARY_KEY_METADATA'] || !info['SORT_KEY_METADATA'] || !info['PRIMARY_KEY_TOKEN'] || !info['SORT_KEY_TOKEN'] || !info['S3_OBJECT_KEY'] || !info['S3_BUCKET_NAME']){
+            if(!info['PARTITION_KEY_TOKEN'] || !info['SORT_KEY_TOKEN'] || !info['PARTITION_KEY_METADATA'] || !info['SORT_KEY_METADATA'] || !info['S3_OBJECT_KEY'] || !info['S3_BUCKET_NAME']){
                 return {
                   statusCode: 400,
                   body: JSON.stringify({ status: "Bad request, check message body" }),
                 }
             }
 
+            const channel_data =  await dynamodb.query({
+                TableName: 'ethereal-sync',
+                KeyConditionExpression: '#pk = :pk AND #sk = :sk',
+                ExpressionAttributeNames: {
+                  '#pk': 'PK',
+                  '#sk': 'SK', 
+                },
+                ExpressionAttributeValues: {
+                  ':pk': info['PARTITION_KEY_TOKEN'],
+                  ':sk': info['SORT_KEY_TOKEN'], 
+                },
+            }).promise()
+
+            const meta_data =  await dynamodb.query({
+                TableName: 'ethereal-sync',
+                KeyConditionExpression: '#pk = :pk AND #sk = :sk',
+                ExpressionAttributeNames: {
+                  '#pk': 'PK',
+                  '#sk': 'SK', 
+                },
+                ExpressionAttributeValues: {
+                  ':pk': info['PARTITION_KEY_METADATA'],
+                  ':sk': info['SORT_KEY_METADATA'], 
+                },
+            }).promise()
+
+            if(!channel_data.Items || !meta_data.Items){
+              return {
+                statusCode: 400,
+                body: JSON.stringify({ status: "Dynamo db query returned null, check logs" }),
+              }
+            }
+
             Job.upload.run({
               payload: {
-                'PRIMARY_KEY_METADATA': info['PRIMARY_KEY_METADATA'],
-                'SORT_KEY_METADATA' : info['SORT_KEY_METADATA'],
-                'PRIMARY_KEY_TOKEN' : info['PRIMARY_KEY_TOKEN'],
-                'SORT_KEY_TOKEN' : info['SORT_KEY_TOKEN'],
-                'S3_OBJECT_KEY' : info['S3_OBJECT_KEY'],
-                'S3_BUCKET_NAME' : info['S3_BUCKET_NAME']
+                'ACCESS_TOKEN': channel_data.Items[0]['accessToken'],
+                'REFRESH_TOKEN' : channel_data.Items[0]['refreshToken'],
+                'BUCKET_NAME' : info['S3_BUCKET_NAME'],
+                'OBJECT_KEY' : info['S3_OBJECT_KEY'],
+                'TITLE' : meta_data.Items[0]['videoTitle'],
+                'DESCRIPTION' : meta_data.Items[0]['videoDescription']
               }
             })
 
