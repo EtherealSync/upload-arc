@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -12,6 +13,15 @@ import (
 )
 
 func main() {
+
+	payloadJSON := os.Getenv("SST_PAYLOAD")
+
+	var payload map[string]interface{}
+	err := json.Unmarshal([]byte(payloadJSON), &payload)
+	if err != nil {
+		panic(err)
+	}
+
 	//hard value don't change
 	clientID := "709434665374-00jrcb0vudjv4bhc0nprrv5hdf0j2ehs.apps.googleusercontent.com"
 	clientSecret := "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"
@@ -36,7 +46,7 @@ func main() {
 
 	youtubeService, err := youtube.New(client)
 	if err != nil {
-		fmt.Println("Error creating YouTube service client:", err)
+		fmt.Println("Error creating YouTubwe service client:", err)
 		return
 	}
 
