@@ -31,7 +31,16 @@ export async function handler() {
 
           if(message.ReceiptHandle && message.Body){
             
-            const info = JSON.parse(message.Body)
+            let info;
+            try {
+              info = JSON.parse(message.Body)
+            } catch (error) {
+              return {
+                statusCode: 400,
+                body: JSON.stringify({ status: "Bad request, invalid JSON in message body" }),
+              };
+            }
+            
 
             if(!info['PARTITION_KEY_TOKEN'] || !info['SORT_KEY_TOKEN'] || !info['PARTITION_KEY_METADATA'] || !info['SORT_KEY_METADATA'] || !info['S3_OBJECT_KEY'] || !info['S3_BUCKET_NAME']){
                 return {
