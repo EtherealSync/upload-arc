@@ -6,10 +6,14 @@ export function UploadMicroserice({ stack }: StackContext) {
 
   const upload = new Job(stack, "upload", {
     runtime: "container",
-    architecture: "x86_64",
+    architecture: "arm_64",
     handler: "packages/UploadJob",
     logRetention: "one_week",
     timeout: "2 hours",
+    container:{
+      cmd: ["/upload"]
+    },
+    permissions: ['s3','dynamodb']
   })
 
   const poll = new Cron(stack, "Cron", {
@@ -17,17 +21,9 @@ export function UploadMicroserice({ stack }: StackContext) {
     job: {
       function: {
         handler: "packages/functions/src/lambda.handler",
-        environment: {
-          "UPLOAD_JOB_HANDLER_NAME": upload._jobManager.functionName
-        },
-        bind: [queue]
+        bind: [queue, upload],
+        permissions: ['s3']
       } 
     } 
   })
-
-  upload.attachPermissions(['s3','dynamodb']);
-  upload._jobManager.grantInvoke(poll.jobFunction);
-
-  poll.attachPermissions(['s3']);
-  poll.bind([queue, upload]);
 }
